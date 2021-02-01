@@ -10,6 +10,8 @@
     - [Azure Pipeline](#azure-pipeline)
     - [Test distribution strategy](#test-distribution-strategy)
     - [Other information](#other-information)
+    - [Contributing](#contributing)
+    - [License](#license)
 
 ### Introduction
 
@@ -142,3 +144,11 @@ The test execution time will decrease depending on different factors:
 ### Other information
 
 - A publication about the project is available on Medium at:
+
+
+### Contributing
+Bug reports and pull requests are welcome on GitHub. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the code of conduct.
+
+
+### License
+The code within this repository is available as open source under the terms of the GNU GPL v3 License.
