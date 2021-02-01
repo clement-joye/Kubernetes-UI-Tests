@@ -143,7 +143,7 @@ The test execution time will decrease depending on different factors:
 
 ### Other information
 
-- A publication about the project is available on Medium at:
+- A publication about the project is available [here on Medium](clementjoye.medium.com/decrease-ui-tests-time-execution-f95eb141ec65)
 
 
 ### Contributing
