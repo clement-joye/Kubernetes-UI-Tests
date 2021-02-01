@@ -1,0 +1,27 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+
+- task: AzureCLI@2
+  inputs:
+    displayName: 'Kubernetes UI Tests'
+    azureSubscription: '<Your subscription>'
+    scriptType: 'pscore'
+    scriptLocation: 'scriptPath'
+    scriptPath: '$(System.DefaultWorkingDirectory)/powershell/Invoke-K8sTests.ps1'
+    arguments: '-Mode $(Mode) -Environment $(Environment)'
+    workingDirectory: '$(System.DefaultWorkingDirectory)/powershell'
+
+- task: PublishTestResults@2
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '**/report-*.xml'
+    searchFolder: '$(System.DefaultWorkingDirectory)/reports'
+    mergeTestResults: true
+    testRunTitle: 'Kubernetes test run'
+    failTaskOnFailedTests: true
+

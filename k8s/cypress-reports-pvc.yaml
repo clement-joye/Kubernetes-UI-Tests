@@ -1,0 +1,13 @@
+# Section : Permanent Volume claim for reports
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+  name: reports-pvc
+spec:
+  storageClassName: manual
+  accessModes:
+  - ReadWriteMany 
+  resources:
+    requests:
+      storage: 32Mi

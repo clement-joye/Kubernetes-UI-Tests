@@ -1,0 +1,13 @@
+# Section : Permanent Volume claim for reports
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: resources-pv
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 128Mi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/cypress"

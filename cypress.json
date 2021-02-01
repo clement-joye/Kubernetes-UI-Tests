@@ -1,0 +1,11 @@
+{
+  "projectId": "abc123",
+  "chromeWebSecurity": false,
+  "video": false,
+  "testFiles": "**/*.spec.js",
+  "reporter": "junit",
+  "reporterOptions": {
+    "mochaFile": "reports/report-[hash].xml",
+    "toConsole": true
+  }
+}

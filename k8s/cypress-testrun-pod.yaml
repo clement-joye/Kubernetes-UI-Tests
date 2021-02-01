@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {podName}
+spec:
+  containers:
+  - name: {podName}
+    image: {imageName}
+    imagePullPolicy: Always
+    env:
+    - name: CYPRESS_baseUrl
+      value: "{baseUrl}"
+    - name: CYPRESS_testFiles
+      value: "{testFiles}"
+    - name: NO_COLOR
+      value: "1"
+    volumeMounts:
+      - mountPath: "/reports"
+        name: reports-storage-pv
+      - mountPath: "/cypress"
+        name: resources-storage-pv
+      - mountPath: "/cypress.json"
+        name: "cypress-config"
+        subPath: "cypress.json"
+  restartPolicy: Never
+  volumes:
+    - name: reports-storage-pv
+      persistentVolumeClaim:
+        claimName: reports-pvc
+    - name: resources-storage-pv
+      persistentVolumeClaim:
+        claimName: resources-pvc
+    - name: "cypress-config"
+      configMap:
+        name: "cypress-config"
+

@@ -1,0 +1,28 @@
+{
+    "clusterParameters":
+    {
+        "resourceGroup": "n/a",
+        "name": "n/a",
+        "nodeCount": 1,
+        "vmSize": "n/a",
+        "wait": true,
+        "isLocal": true
+    },
+    "templateParameters":
+    {
+        "podName": "$PodName",
+        "imageName": "cypress/included:3.2.0",
+        "testFiles": "**/*$PodName*.js",
+        "baseUrl": "Your Base Url"
+    },
+    "resourcesDeployments": [
+        { "name": "resources-pv",  "path": "../k8s/cypress-resources-pv.yaml"  },
+        { "name": "resources-pvc", "path": "../k8s/cypress-resources-pvc.yaml" },
+        { "name": "resources-pod", "path": "../k8s/cypress-resources-pod.yaml" }
+    ],
+    "reportsDeployments": [
+        { "name": "reports-pv",  "path": "../k8s/cypress-reports-pv.yaml"  },
+        { "name": "reports-pvc", "path": "../k8s/cypress-reports-pvc.yaml" },
+        { "name": "reports-pod", "path": "../k8s/cypress-reports-pod.yaml" }
+    ]
+}

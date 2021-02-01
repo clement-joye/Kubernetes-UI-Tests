@@ -1,0 +1,13 @@
+# configuration files
+.vscode/
+
+# build / libraries
+node_modules/
+package-lock.json
+
+# folders
+cypress/videos
+cypress/screenshots
+reports/
+deployments/
+logging/

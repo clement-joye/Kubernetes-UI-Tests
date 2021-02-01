@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: resources-pod
+spec:
+  containers:
+  - name: alpine
+    image: alpine:latest
+    command: ['sleep', 'infinity']
+    volumeMounts:
+    - name: resources-pvc
+      mountPath: /cypress
+  restartPolicy: Never
+  volumes:
+  - name: resources-pvc
+    persistentVolumeClaim:
+      claimName: resources-pvc
