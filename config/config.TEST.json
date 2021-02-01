@@ -13,7 +13,7 @@
         "podName": "$PodName",
         "imageName": "cypress/included:3.2.0",
         "testFiles": "**/*$PodName*.js",
-        "baseUrl": "Your Base Url"
+        "baseUrl": "https://your-base-url.com"
     },
     "resourcesDeployments": [
         { "name": "resources-pv",  "path": "../k8s/cypress-resources-pv.yaml"  },
