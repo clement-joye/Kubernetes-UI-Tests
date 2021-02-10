@@ -43,7 +43,6 @@ function Wait-ClusterReady {
 
         if ( $Wait -eq $False ) {
 
-        
             Wait-AksClusterState -ResourceGroup $ResourceGroup -Name $Name -State "created"
         }
         
@@ -59,18 +58,43 @@ function New-Deployments {
        [Parameter ( Mandatory = $True, Position = 0, ValueFromPipelineByPropertyName = $True )]
        [PSCustomObject[]] $Deployments,
        [Parameter ( Mandatory = $False, Position = 1, ValueFromPipelineByPropertyName = $True )]
-       [int] $Timeout = 500
+       [int] $MaxPodLimit = -1
     )
 
     try {
 
         Write-TimestampOutput -Message "---[Deployment started]---`r`n"
 
+        $Count = 0
+
         ForEach ( $Deployment in $Deployments ) {
 
-            Write-TimestampOutput -Message "Checking for file existence $($Deployment.Path): $(Test-Path $Deployment.Path -PathType Leaf)"
+            if ( $MaxPodLimit -eq -1 ) {
+            
+                Write-TimestampOutput -Message "Checking for file existence $($Deployment.Path): $(Test-Path $Deployment.Path -PathType Leaf)"
 
-            Add-KubectlDeployment -Name $Deployment.Name -Filepath $Deployment.Path
+                Add-KubectlDeployment -Name $Deployment.Name -Filepath $Deployment.Path
+            }
+            else {
+
+                if ( $Deployment.Deployed -eq $True) {
+
+                    continue;
+                }
+
+                Write-TimestampOutput -Message "Checking for file existence $($Deployment.Path): $(Test-Path $Deployment.Path -PathType Leaf)"
+
+                Add-KubectlDeployment -Name $Deployment.Name -Filepath $Deployment.Path
+                
+                $Deployment.Deployed = $True
+
+                $Count++
+
+                if ( $Count -ge $MaxPodLimit ) {
+
+                    break;
+                }
+            }
         }
         
         Write-TimestampOutput -Message "---[Deployment done]--- success`r`n"
@@ -88,7 +112,9 @@ function Initialize-Deployments {
        [Parameter ( Mandatory = $True, Position = 0, ValueFromPipelineByPropertyName = $True )]
        [PSCustomObject[]] $ResourcesDeployments,
        [Parameter ( Mandatory = $True, Position = 1, ValueFromPipelineByPropertyName = $True )]
-       [PSCustomObject[]] $ReportsDeployments
+       [PSCustomObject[]] $ReportsDeployments,
+       [Parameter ( Mandatory = $True, Position = 2, ValueFromPipelineByPropertyName = $True )]
+       [PSCustomObject[]] $Deployments
     )
 
     # Clear Deployments
@@ -104,32 +130,27 @@ function Initialize-Deployments {
 
     Add-ConfigMap -Name "cypress-config" -SourcePath "../cypress.json"
 
-    # Clear previous resrouces and reports
+    # Clear previous resources and reports
     Invoke-PodCommand -PodName "resources-pod" -Command "rm -rf ./cypress/*"
-    Invoke-PodCommand -PodName "reports-pod" -Command "rm -rf ./data/*"
+    Invoke-PodCommand -PodName "reports-pod" -Command "rm -rf ./reports/*"
 
     # Copy cypress resources
     Copy-LocalToPod -PodName "resources-pod" -SourcePath "../cypress/" -DestinationPath "/"
-    # Copy-LocalToPod -PodName "resources-pod" -SourcePath "../cypress.json" -DestinationPath "/cypress.json"
 
     # Test folder
-    $Folder = (Invoke-PodCommand -PodName "resources-pod" -Command "ls ./")
+    $Files = ( ( Invoke-PodCommand -PodName "resources-pod" -Command "find /cypress/integration -name '*.spec.js'") | Out-String )
 
-    if ( $Folder -Notcontains "cypress" ) {
+    ForEach ($Deployment in $Deployments) {
 
-        throw "Copy of resources failed"
-    }
+        if ( $Files -notlike "*$($Deployment.Name)*" ) {
 
-    # Test cypress folder
-    $Folder = (Invoke-PodCommand -PodName "resources-pod" -Command "ls ./cypress")
-
-    if ( $Folder.Count -eq 0 ) {
-
-        throw "Copy of resources failed"
+            throw "Copy of resources failed"
+        }
     }
     
     Clear-KubectlDeployments -Kind "pod"
 }
+
 function Wait-PodsReady {
 
     param(
@@ -158,16 +179,19 @@ function Wait-PodsSucceededOrFailed {
 
     param(
        [Parameter ( Mandatory = $True, Position = 0, ValueFromPipelineByPropertyName = $True )]
-       [string[]] $Deployments,
-       [Parameter ( Mandatory = $False, Position = 1, ValueFromPipelineByPropertyName = $True )]
-       [int] $Timeout = 300,
+       [PSCustomObject[]] $Deployments,
+       [Parameter ( Mandatory = $True, Position = 1, ValueFromPipelineByPropertyName = $True )]
+       [int] $MaxPodLimit,
        [Parameter ( Mandatory = $False, Position = 2, ValueFromPipelineByPropertyName = $True )]
+       [int] $Timeout = 300,
+       [Parameter ( Mandatory = $False, Position = 3, ValueFromPipelineByPropertyName = $True )]
        [int] $Interval = 5
     )
 
     Start-Sleep -s 3
     $Count = 0
     $Animation = @( ".", "..", "..." )
+    $CompletedHistory = @()
 
     do {
 
@@ -175,38 +199,56 @@ function Wait-PodsSucceededOrFailed {
 
             $PodsRunning = Get-PodsInfo -Status "Running"
             $PodsFailed = Get-PodsInfo -Status "Failed"
+            $PodsCompleted = Get-PodsInfo -Status "Succeeded"
+            $RemainingDeployments = ( $Deployments | Where-Object { $_.Deployed -eq $False } )
+
+            $RunningNumber   = $PodsRunning.Count
+            $FailedNumber    = $PodsFailed.Count
+            $RemainingNumber = $RemainingDeployments.Count
+            $CompletedNumber = $CompletedHistory.Count
+            
+            $RunningPercent   = [math]::Round( $RunningNumber   / $Deployments.Count * 100 )
+            $FailedPercent    = [math]::Round( $FailedNumber    / $Deployments.Count * 100 )
+            $CompletedPercent = [math]::Round( $CompletedNumber / $Deployments.Count * 100 )
+            $RemainingPercent = [math]::Round( $RemainingNumber / $Deployments.Count * 100 )
+
+            ForEach ( $Item in $PodsCompleted ) { 
+                
+                if( $CompletedHistory.Contains($Item.PodName) -eq $False ) {
+
+                    Remove-KubectlDeployment -Kind "pod" -Name $Item.PodName
+    
+                    $CompletedHistory += $Item.PodName 
+                }
+            }
+    
+            ForEach ( $Item in $PodsFailed ) { Write-TimestampOutput -Message "$(Get-PodLogs -PodName $Item.PodName)`r`n" }
+
+            if ( ( $RunningNumber -lt $MaxPodLimit ) -And $RemainingNumber -gt 0 ) {
+
+                New-Deployments -Deployments $Deployments -MaxPodLimit 1
+            }
         }
 
-        $RunningNumber   = $PodsRunning.Count
-        $FailedNumber    = $PodsFailed.Count
-        $SucceededNumber = $Deployments.Count - $RunningNumber - $FailedNumber
-        
-        $RunningPercent   = [math]::Round( $RunningNumber   / $Deployments.Count * 100 )
-        $FailedPercent    = [math]::Round( $FailedNumber    / $Deployments.Count * 100 )
-        $SucceededPercent = [math]::Round( $SucceededNumber / $Deployments.Count * 100 )
-
-        Write-Progress -Activity 'Running' -Status "$(Get-TimeStamp) Test Pod status: Running: $RunningPercent% - Succeeded: $SucceededPercent% - Failed: $FailedPercent% $($Animation[ ($Count % 4) ])"
+        Write-Progress -Activity 'Running' -Status "$(Get-TimeStamp) Test Pod status: Running: $RunningPercent% - Succeeded: $CompletedPercent% - Failed: $FailedPercent% - Queued: $RemainingPercent% $($Animation[ ($Count % 4)])"
         
         Start-Sleep -s 1
+
         $Count++
-        
-        if( $PodsRunning.Count -eq 0 -Or $PodsError.Count -ne 0 ) {
 
-            break
-        }
-
-    } while ( $PodsRunning.Count -gt 0 -And $PodsError.Count -eq 0 )
+    } while ( ($RunningNumber -gt 0 -Or $RemainingNumber -gt 0) -And $FailedNumber -eq 0)
 
     $Pods = @{}
     $PodsCompleted = Get-PodsInfo -Status "Succeeded"
     
-    ForEach ( $Item in $PodsRunning   ) { if ($Pods.ContainsKey($Item.PodName) -eq $False) { $Pods.Add( $Item.PodName, "Running"   ) }}
-    ForEach ( $Item in $PodsCompleted ) { if ($Pods.ContainsKey($Item.PodName) -eq $False) { $Pods.Add( $Item.PodName, "Succeeded" ) }}
-    ForEach ( $Item in $PodsError     ) { if ($Pods.ContainsKey($Item.PodName) -eq $False) { $Pods.Add( $Item.PodName, "Failed"    ) }}
+    ForEach ( $Item in $PodsRunning          ) { if ($Pods.ContainsKey( $Item.PodName ) -eq $False) { $Pods.Add( $Item.PodName, "Running"      ) }}
+    ForEach ( $Item in $CompletedHistory     ) { if ($Pods.ContainsKey( $item         ) -eq $False) { $Pods.Add( $Item,         "Succeeded"    ) }}
+    ForEach ( $Item in $PodsFailed           ) { if ($Pods.ContainsKey( $Item.PodName ) -eq $False) { $Pods.Add( $Item.PodName, "Failed"       ) }}
+    ForEach ( $Item in $RemainingDeployments ) { if ($Pods.ContainsKey( $Item.Name    ) -eq $False) { $Pods.Add( $Item.Name,    "Not Deployed" ) }}
 
     Write-Progress -Activity "Running" -Completed
 
-    Write-TimestampOutput -Message "$Pods `r`n"
+    Write-TimestampOutput -Message "$($Pods | Out-String) `r`n"
 }
 
 function Export-TestResults {
@@ -238,7 +280,7 @@ function Export-TestResults {
 
         Copy-PodToLocal -PodName $Deployment.Name -SourcePath $SourcePath -DestinationPath $DestinationPath
 
-        if( (Get-ChildItem $Path | Measure-Object).Count -eq 0 ) {
+        if( (Get-ChildItem $DestinationPath | Measure-Object).Count -eq 0 ) {
 
             throw "Empty results."
         }

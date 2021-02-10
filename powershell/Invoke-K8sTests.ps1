@@ -54,7 +54,7 @@ Begin {
 
     function Configure {
 
-        Clear-Logs | OUt-Null
+        Clear-Logs | Out-Null
 
         $Configuration = New-Configuration -Path "..\config\config.$Environment.json"
 
@@ -63,7 +63,7 @@ Begin {
             Write-Debug "$( $Property.Value | Out-String ) `r`n"
         }
 
-        $Deployments = Initialize-DeploymentFiles
+        $Deployments = Initialize-DeploymentFiles -FileParameters $($Configuration.FileParameters)
 
         if ( $Null -eq  $Deployments -Or $Deployments.Count -eq 0 ) {
             Write-Error "Deployments cannot be null or empty. Please check configuration file." -ErrorAction Stop
@@ -88,19 +88,19 @@ Begin {
             # Wait for cluster ready
             Wait-ClusterReady -ClusterParameters $Configuration.ClusterParameters
                 
-            Initialize-Deployments -ResourcesDeployments $Configuration.ResourcesDeployments -ReportsDeployments $Configuration.ReportsDeployments
+            Initialize-Deployments -ResourcesDeployments $Configuration.ResourcesDeployments -ReportsDeployments $Configuration.ReportsDeployments -Deployments $Deployments
             
             # TestRun Deployments
-            New-Deployments -Deployments $Deployments
+            New-Deployments -Deployments $Deployments -MaxPodLimit $Configuration.ClusterParameters.MaxPodLimit
 
             # Wait For Pods Ready
-            Wait-PodsReady -Deployments $Deployments.Name
+            Wait-PodsReady -Deployments ( $Deployments | Where-Object { $_.Deployed -eq $True } ).Name
 
             # Wait For Pods Completed Or Failed
-            Wait-PodsSucceededOrFailed -Deployments $Deployments.Name
+            Wait-PodsSucceededOrFailed -Deployments $Deployments -MaxPodLimit $Configuration.ClusterParameters.MaxPodLimit
             
             # Export Test Results
-            Export-TestResults -SourcePath "/data" -DestinationPath "../reports/" -ReportDeployments $Configuration.ReportsDeployments
+            Export-TestResults -SourcePath "/reports" -DestinationPath "../reports/" -ReportDeployments $Configuration.ReportsDeployments
         }
         catch {
 
@@ -167,4 +167,3 @@ End {
         }
     }
 }
-

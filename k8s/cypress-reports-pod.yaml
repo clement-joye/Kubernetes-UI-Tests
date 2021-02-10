@@ -9,7 +9,7 @@ spec:
     command: ['sleep', 'infinity']
     volumeMounts:
     - name: reports-pvc
-      mountPath: /data
+      mountPath: /reports
   restartPolicy: Never
   volumes:
   - name: reports-pvc

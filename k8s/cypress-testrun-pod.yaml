@@ -12,6 +12,8 @@ spec:
       value: "{baseUrl}"
     - name: CYPRESS_testFiles
       value: "{testFiles}"
+    - name: CYPRESS_integrationFolder
+      value: "cypress/integration"
     - name: NO_COLOR
       value: "1"
     volumeMounts:

@@ -3,16 +3,22 @@
     {
         "resourceGroup": "your-resource-group",
         "name": "your-cluster-name",
-        "nodeCount": 1,
+        "nodeCount": 5,
         "vmSize": "Standard_DS2_v2",
-        "wait": true,
-        "isLocal": false
+        "wait": false,
+        "isLocal": false,
+        "maxPodLimit": 5
+    },
+    "fileParameters": 
+    {
+        "include": "*spec.js",
+        "exclude": ["*any*.js"]
     },
     "templateParameters":
     {
         "podName": "$PodName",
-        "imageName": "cypress/included:3.2.0",
-        "testFiles": "**/*$PodName*.js",
+        "imageName": "cypress/included:6.4.0",
+        "testFiles": "**/*$PodName*.spec.js",
         "baseUrl": "https://your-base-url.com"
     },
     "resourcesDeployments": [

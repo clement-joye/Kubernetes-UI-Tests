@@ -1,5 +1,4 @@
 {
-  "projectId": "abc123",
   "chromeWebSecurity": false,
   "video": false,
   "testFiles": "**/*.spec.js",

@@ -77,6 +77,7 @@ function Add-DeploymentFiles {
         }
 
         Write-TimestampOutput "Creating $($Deployment.Path) with value:`r`n$Template"
+        #Write-TimestampOutput "Creating $($Deployment.Path)"
         
         New-Item -Path $Deployment.Path -ItemType "file" -Value $Template -Force
     }
@@ -84,12 +85,17 @@ function Add-DeploymentFiles {
 
 function Initialize-DeploymentFiles {
 
+    param(
+        [Parameter ( Mandatory = $True, Position = 0, ValueFromPipelineByPropertyName = $True )]
+        [PSCustomObject] $FileParameters
+    )
+
     try { 
 
         Write-TimestampOutput -Message "---[Prepare Deployment Files started]---"
 
         # Test files
-        $Filenames = Get-ChildItem "..\cypress\integration" -Filter *spec.js -Recurse -Name
+        $Filenames = Get-ChildItem "..\cypress\integration" -Filter $FileParameters.Include -Exclude $FileParameters.Exclude -Recurse
 
         if( $Filenames.Count -eq 0 ) {
 
@@ -103,10 +109,10 @@ function Initialize-DeploymentFiles {
 
         ForEach ( $Filename in $Filenames ) {
 
-            $PodName = $Filename.Substring( 0, $Filename.IndexOf( "." ) )
+            $PodName = $Filename.Name.Replace(".spec.js", "")
             $YamlFilepath = "..\deployments\$PodName.yaml"
             
-            $Deployments+= ( [PSCustomObject] @{ name = $PodName; path = $YamlFilepath } )
+            $Deployments+= ( [PSCustomObject] @{ Name = $PodName; Path = $YamlFilepath; Deployed = $False } )
             Write-TimestampOutput -Message "$PodName / $YamlFilepath"
         }
         

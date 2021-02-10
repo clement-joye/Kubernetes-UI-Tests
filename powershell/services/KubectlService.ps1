@@ -215,6 +215,17 @@ function Invoke-PodCommand {
     ( kubectl exec $PodName -- sh -c $Command )
 }
 
+function Get-PodLogs {
+
+    param(
+        
+        [Parameter ( Mandatory = $True, Position = 0, ValueFromPipelineByPropertyName = $True )]
+        [String] $PodName
+    )
+    
+    ( ( kubectl logs $PodName ) -replace '\n','\r\n' )
+}
+
 function Add-ConfigMap {
 
     param(
@@ -261,7 +272,7 @@ function Remove-KubectlDeployment {
 
     Write-TimestampOutput -Message "[Started] Removing $Kind $Name"
 
-    kubectl delete $Kind $Name --now --timeout $($Timeout)s
+    kubectl delete $Kind $Name --now --timeout "$($Timeout)s"
 
     Write-TimestampOutput -Message "[Done] Removing $Kind $Name"
 }
@@ -281,3 +292,4 @@ function Clear-KubectlDeployments {
     
     Write-TimestampOutput -Message "[Done] Removing all existing $Kind(s)"
 }
+
